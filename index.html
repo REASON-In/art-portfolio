@@ -4,39 +4,91 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Brother's Art - ImageBB Upload</title>
-  <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #fafafa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      text-align: center;
+      padding: 2rem 1rem;
+      background: linear-gradient(135deg, #f0a6ca, #b6e0fe);
+      color: #fff;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+    }
 
     #uploadForm {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 600px;
+      margin: 2rem auto;
+    }
 
-#uploadForm input,
-#uploadForm button {
-  padding: 0.7rem;
-  font-size: 1rem;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
+    #uploadForm input,
+    #uploadForm button {
+      padding: 0.7rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
 
-#uploadForm button {
-  background: #f0a6ca;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
+    #uploadForm button {
+      background: #f0a6ca;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
 
-#uploadForm button:hover {
-  background: #e082b2;
-}
+    #uploadForm button:hover {
+      background: #e082b2;
+    }
 
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card img {
+      width: 100%;
+      display: block;
+    }
+
+    .card-info {
+      padding: 1rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background: #eee;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
@@ -46,7 +98,7 @@
     <p>Explore creative pieces uploaded by my talented brother!</p>
   </header>
 
-  <section id="uploadForm" style="max-width:600px; margin: 2rem auto;">
+  <section id="uploadForm">
     <input type="file" id="imageInput" accept="image/*" />
     <input type="text" id="titleInput" placeholder="Artwork Title" />
     <input type="date" id="dateInput" />
@@ -64,38 +116,20 @@
   </footer>
 
   <script>
-
-axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
-  image: base64Image,
-  name: title,
-  expiration: 0
-})
-.then(response => {
-  console.log('ImageBB upload response:', response.data);
-  const imageURL = response.data.data.url;
-  saveToFirebase(title, date, imageURL);
-})
-.catch(err => {
-  console.error("ImageBB upload error:", err.response ? err.response.data : err);
-  alert("Upload failed, try again!");
-});
-
-    
-    // Your ImageBB API Key here
+    // Your ImageBB API Key
     const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
 
-    // Firebase config - replace with your project config
-  const firebaseConfig = {
-    apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
-    authDomain: "portfolio-94e00.firebaseapp.com",
-    databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
-    projectId: "portfolio-94e00",
-    storageBucket: "portfolio-94e00.firebasestorage.app",
-    messagingSenderId: "1019596037495",
-    appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
-    measurementId: "G-B5HLG7MQ96"
-  };
-
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
+      authDomain: "portfolio-94e00.firebaseapp.com",
+      databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
+      projectId: "portfolio-94e00",
+      storageBucket: "portfolio-94e00.appspot.com",
+      messagingSenderId: "1019596037495",
+      appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
+      measurementId: "G-B5HLG7MQ96"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -118,20 +152,20 @@ axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64Image = reader.result.split(',')[1]; // Remove data:image/... prefix
+        const base64Image = reader.result.split(',')[1];
 
         axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
           image: base64Image,
-          name: title,
-          expiration: 0
+          name: title
         })
         .then(response => {
           const imageURL = response.data.data.url;
+          console.log("✅ Uploaded to ImageBB:", imageURL);
           saveToFirebase(title, date, imageURL);
         })
         .catch(err => {
-          console.error("ImageBB upload error:", err);
-          alert("Upload failed, try again!");
+          console.error("❌ ImageBB upload error:", err);
+          alert("Image upload failed. Try again.");
         });
       };
 
@@ -143,10 +177,15 @@ axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
         title,
         date,
         imageURL
-      }).then(() => {
+      })
+      .then(() => {
         alert("Artwork uploaded successfully!");
         resetForm();
         loadGallery();
+      })
+      .catch(err => {
+        console.error("❌ Firebase error:", err);
+        alert("Failed to save to database.");
       });
     }
 
@@ -161,6 +200,7 @@ axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
       db.ref('artworks').once('value', snapshot => {
         const data = snapshot.val();
         if (!data) return;
+
         Object.values(data).forEach(art => {
           const card = document.createElement('div');
           card.className = 'card';
@@ -176,7 +216,7 @@ axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
       });
     }
 
-    // Load gallery on page load
+    // Load existing artwork
     loadGallery();
   </script>
 
