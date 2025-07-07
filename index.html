@@ -165,184 +165,198 @@
   </footer>
 
 <script>
-  const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
+const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
-    authDomain: "portfolio-94e00.firebaseapp.com",
-    databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
-    projectId: "portfolio-94e00",
-    storageBucket: "portfolio-94e00.appspot.com",
-    messagingSenderId: "1019596037495",
-    appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
-    measurementId: "G-B5HLG7MQ96"
+const firebaseConfig = {
+  apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
+  authDomain: "portfolio-94e00.firebaseapp.com",
+  databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
+  projectId: "portfolio-94e00",
+  storageBucket: "portfolio-94e00.appspot.com",
+  messagingSenderId: "1019596037495",
+  appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
+  measurementId: "G-B5HLG7MQ96"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const uploadBtn = document.getElementById('uploadBtn');
+const imageInput = document.getElementById('imageInput');
+const titleInput = document.getElementById('titleInput');
+const dateInput = document.getElementById('dateInput');
+const gallery = document.getElementById('gallery');
+
+uploadBtn.addEventListener('click', () => {
+  const file = imageInput.files[0];
+  const title = titleInput.value.trim();
+  const date = dateInput.value;
+
+  if (!file || !title || !date) {
+    alert("Please fill all fields and select an image!");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    const base64Image = reader.result.split(',')[1];
+
+    const formData = new FormData();
+    formData.append('image', base64Image);
+    formData.append('name', title);
+
+    axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, formData)
+      .then(response => {
+        const imageURL = response.data.data.url;
+        console.log("✅ Uploaded to ImageBB:", imageURL);
+        saveToFirebase(title, date, imageURL);
+      })
+      .catch(err => {
+        console.error("❌ ImgBB upload error:", err);
+        alert("Image upload failed. Check console.");
+      });
   };
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+  reader.readAsDataURL(file);
+});
 
-  const uploadBtn = document.getElementById('uploadBtn');
-  const imageInput = document.getElementById('imageInput');
-  const titleInput = document.getElementById('titleInput');
-  const dateInput = document.getElementById('dateInput');
-  const gallery = document.getElementById('gallery');
+function saveToFirebase(title, date, imageURL) {
+  db.ref('artworks').push({
+    title,
+    date,
+    imageURL
+  })
+  .then(() => {
+    alert("✅ Artwork uploaded successfully!");
+    resetForm();
+    loadGallery();
+  })
+  .catch(err => {
+    console.error("❌ Firebase error:", err);
+    alert("Failed to save to Firebase. Check rules and internet.");
+  });
+}
 
-  uploadBtn.addEventListener('click', () => {
-    const file = imageInput.files[0];
-    const title = titleInput.value.trim();
-    const date = dateInput.value;
+function resetForm() {
+  imageInput.value = '';
+  titleInput.value = '';
+  dateInput.value = '';
+}
 
-    if (!file || !title || !date) {
-      alert("Please fill all fields and select an image!");
+const REACTION_EMOJIS = ['❤️', '🔥', '😍', '🎨', '😎', '🤩', '👏'];
+
+function loadGallery() {
+  gallery.innerHTML = '';
+  db.ref('artworks').once('value')
+    .then(snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const artworks = Object.entries(data)
+        .sort((a, b) => new Date(b[1].date) - new Date(a[1].date));
+
+      artworks.forEach(([artKey, art]) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.setAttribute('data-artkey', artKey);
+
+        const reactionsHtml = REACTION_EMOJIS.map(e => 
+          `<span class="emoji" data-emoji="${e}">${e}</span>`
+        ).join('');
+
+        card.innerHTML = `
+          <img src="${art.imageURL}" alt="${art.title}">
+          <div class="card-info">
+            <h3>${art.title}</h3>
+            <p>${art.date}</p>
+          </div>
+          <div class="reactions">${reactionsHtml}</div>
+          <div class="reaction-counts">Loading reactions...</div>
+          <div class="reaction-names" style="margin: 0 1rem 1rem 1rem; font-size: 14px; color: #555;">
+            Loading who reacted...
+          </div>
+        `;
+
+        gallery.appendChild(card);
+
+        setupReactionListeners(card, artKey);
+        loadReactions(artKey, card);
+        loadReactionNames(artKey, card);
+      });
+    })
+    .catch(err => {
+      console.error("❌ Error loading gallery:", err);
+    });
+}
+
+function setupReactionListeners(card, artKey) {
+  const emojiEls = card.querySelectorAll('.reactions .emoji');
+  emojiEls.forEach(emojiEl => {
+    emojiEl.addEventListener('click', async () => {
+      const emoji = emojiEl.getAttribute('data-emoji');
+
+      const name = prompt(`Enter your name to react with ${emoji}:`);
+      if (!name) return alert('You must enter your name to react!');
+
+      try {
+        await db.ref(`reactions/${artKey}`).push({
+          name: name.trim(),
+          emoji,
+          timestamp: Date.now()
+        });
+      } catch (err) {
+        console.error("❌ Error saving reaction:", err);
+        alert("Failed to save reaction. Try again.");
+      }
+    });
+  });
+}
+
+function loadReactions(artKey, card) {
+  const countsDiv = card.querySelector('.reaction-counts');
+  const reactionsRef = db.ref(`reactions/${artKey}`);
+
+  reactionsRef.on('value', snapshot => {
+    const reactions = snapshot.val();
+    if (!reactions) {
+      countsDiv.textContent = 'No reactions yet';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Image = reader.result.split(',')[1];
+    const counts = {};
+    Object.values(reactions).forEach(({emoji}) => {
+      counts[emoji] = (counts[emoji] || 0) + 1;
+    });
 
-      const formData = new FormData();
-      formData.append('image', base64Image);
-      formData.append('name', title);
-
-      axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, formData)
-        .then(response => {
-          const imageURL = response.data.data.url;
-          console.log("✅ Uploaded to ImageBB:", imageURL);
-          saveToFirebase(title, date, imageURL);
-        })
-        .catch(err => {
-          console.error("❌ ImgBB upload error:", err);
-          alert("Image upload failed. Check console.");
-        });
-    };
-
-    reader.readAsDataURL(file);
+    countsDiv.innerHTML = Object.entries(counts)
+      .map(([emoji, count]) => `${emoji} ${count}`)
+      .join(' • ');
   });
+}
 
-  function saveToFirebase(title, date, imageURL) {
-    db.ref('artworks').push({
-      title,
-      date,
-      imageURL
-    })
-    .then(() => {
-      alert("✅ Artwork uploaded successfully!");
-      resetForm();
-      loadGallery();
-    })
-    .catch(err => {
-      console.error("❌ Firebase error:", err);
-      alert("Failed to save to Firebase. Check rules and internet.");
+// NEW FUNCTION: Show names of users who reacted with their emoji
+function loadReactionNames(artKey, card) {
+  const namesDiv = card.querySelector('.reaction-names');
+  const reactionsRef = db.ref(`reactions/${artKey}`);
+
+  reactionsRef.on('value', snapshot => {
+    const reactions = snapshot.val();
+    if (!reactions) {
+      namesDiv.textContent = 'No one has reacted yet';
+      return;
+    }
+
+    // Format: emoji + name, separated by commas
+    const reactionEntries = Object.values(reactions).map(({name, emoji}) => {
+      return `${emoji} ${name}`;
     });
-  }
 
-  function resetForm() {
-    imageInput.value = '';
-    titleInput.value = '';
-    dateInput.value = '';
-  }
+    namesDiv.textContent = reactionEntries.join(', ');
+  });
+}
 
-  // Emojis to show for reactions
-  const REACTION_EMOJIS = ['❤️', '🔥', '😍', '🎨', '😎', '🤩', '👏'];
+loadGallery();
 
-  // Load gallery with reaction buttons and reaction counts
-  function loadGallery() {
-    gallery.innerHTML = '';
-    db.ref('artworks').once('value')
-      .then(snapshot => {
-        const data = snapshot.val();
-        if (!data) return;
-
-        // Convert to array and sort by date descending
-        const artworks = Object.entries(data)
-          .sort((a, b) => new Date(b[1].date) - new Date(a[1].date));
-
-        artworks.forEach(([artKey, art]) => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.setAttribute('data-artkey', artKey);
-
-          // Build reactions buttons HTML
-          const reactionsHtml = REACTION_EMOJIS.map(e => 
-            `<span class="emoji" data-emoji="${e}">${e}</span>`
-          ).join('');
-
-          card.innerHTML = `
-            <img src="${art.imageURL}" alt="${art.title}">
-            <div class="card-info">
-              <h3>${art.title}</h3>
-              <p>${art.date}</p>
-            </div>
-            <div class="reactions">${reactionsHtml}</div>
-            <div class="reaction-counts">Loading reactions...</div>
-          `;
-
-          gallery.appendChild(card);
-
-          // Setup listeners for emoji clicks on this card
-          setupReactionListeners(card, artKey);
-
-          // Load and display reaction counts for this artwork
-          loadReactions(artKey, card);
-        });
-      })
-      .catch(err => {
-        console.error("❌ Error loading gallery:", err);
-      });
-  }
-
-  // Add event listeners to reaction emojis for a given artwork card
-  function setupReactionListeners(card, artKey) {
-    const emojiEls = card.querySelectorAll('.reactions .emoji');
-    emojiEls.forEach(emojiEl => {
-      emojiEl.addEventListener('click', async () => {
-        const emoji = emojiEl.getAttribute('data-emoji');
-
-        const name = prompt(`Enter your name to react with ${emoji}:`);
-        if (!name) return alert('You must enter your name to react!');
-
-        try {
-          // Save reaction to Firebase under reactions/{artKey}/
-          await db.ref(`reactions/${artKey}`).push({
-            name,
-            emoji,
-            timestamp: Date.now()
-          });
-        } catch (err) {
-          console.error("❌ Error saving reaction:", err);
-          alert("Failed to save reaction. Try again.");
-        }
-      });
-    });
-  }
-
-  // Load reactions for a specific artwork and display counts
-  function loadReactions(artKey, card) {
-    const countsDiv = card.querySelector('.reaction-counts');
-    const reactionsRef = db.ref(`reactions/${artKey}`);
-
-    reactionsRef.on('value', snapshot => {
-      const reactions = snapshot.val();
-      if (!reactions) {
-        countsDiv.textContent = 'No reactions yet';
-        return;
-      }
-
-      // Count each emoji reaction
-      const counts = {};
-      Object.values(reactions).forEach(({emoji}) => {
-        counts[emoji] = (counts[emoji] || 0) + 1;
-      });
-
-      // Format the counts nicely for display
-      countsDiv.innerHTML = Object.entries(counts)
-        .map(([emoji, count]) => `${emoji} ${count}`)
-        .join(' • ');
-    });
-  }
-
-  loadGallery();
 </script>
 </body>
 </html>
