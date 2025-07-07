@@ -195,169 +195,178 @@
     <p>© 2025 Made with ❤️ by Reason & bro</p>
   </footer>
 
-  <script>
-    const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
+<script>
+  const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
-      authDomain: "portfolio-94e00.firebaseapp.com",
-      databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
-      projectId: "portfolio-94e00",
-      storageBucket: "portfolio-94e00.appspot.com",
-      messagingSenderId: "1019596037495",
-      appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
-      measurementId: "G-B5HLG7MQ96"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
+    authDomain: "portfolio-94e00.firebaseapp.com",
+    databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
+    projectId: "portfolio-94e00",
+    storageBucket: "portfolio-94e00.appspot.com",
+    messagingSenderId: "1019596037495",
+    appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
+    measurementId: "G-B5HLG7MQ96"
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
 
-    // Auth UI Elements
-    const loginBtn = document.getElementById('loginBtn');
-    const signupBtn = document.getElementById('signupBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userInfo = document.getElementById('userInfo');
-    const loginForm = document.getElementById('loginForm');
-    const userEmail = document.getElementById('userEmail');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userInfo = document.getElementById('userInfo');
+  const loginForm = document.getElementById('loginForm');
+  const userEmail = document.getElementById('userEmail');
 
-    // Upload UI Elements
-    const uploadBtn = document.getElementById('uploadBtn');
-    const imageInput = document.getElementById('imageInput');
-    const titleInput = document.getElementById('titleInput');
-    const dateInput = document.getElementById('dateInput');
-    const gallery = document.getElementById('gallery');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const imageInput = document.getElementById('imageInput');
+  const titleInput = document.getElementById('titleInput');
+  const dateInput = document.getElementById('dateInput');
+  const gallery = document.getElementById('gallery');
 
-    // AUTH EVENT LISTENERS
-    loginBtn.addEventListener('click', () => {
-      const email = document.getElementById('emailInput').value;
-      const password = document.getElementById('passwordInput').value;
+  let currentUser = null;
 
-      if (!email || !password) {
-        alert("Please enter both email and password.");
-        return;
-      }
+  loginBtn.addEventListener('click', () => {
+    const email = document.getElementById('emailInput').value;
+    const password = document.getElementById('passwordInput').value;
 
-      auth.signInWithEmailAndPassword(email, password)
-        .then(() => alert("✅ Logged in!"))
-        .catch(err => alert("❌ Login failed: " + err.message));
-    });
-
-    signupBtn.addEventListener('click', () => {
-      const email = document.getElementById('emailInput').value;
-      const password = document.getElementById('passwordInput').value;
-
-      if (!email || !password) {
-        alert("Please enter both email and password.");
-        return;
-      }
-
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(() => alert("✅ Signed up!"))
-        .catch(err => alert("❌ Signup failed: " + err.message));
-    });
-
-    logoutBtn.addEventListener('click', () => {
-      auth.signOut();
-    });
-
-    // Listen for Auth State Changes
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        userEmail.textContent = `Logged in as: ${user.email}`;
-        userInfo.style.display = 'inline-block';
-        loginForm.style.display = 'none';
-        uploadBtn.disabled = false;
-      } else {
-        userInfo.style.display = 'none';
-        loginForm.style.display = 'block';
-        uploadBtn.disabled = true;
-      }
-    });
-
-    // UPLOAD HANDLER
-    uploadBtn.addEventListener('click', () => {
-      const file = imageInput.files[0];
-      const title = titleInput.value.trim();
-      const date = dateInput.value;
-
-      if (!file || !title || !date) {
-        alert("Please fill all fields and select an image!");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Image = reader.result.split(',')[1];
-
-        const formData = new FormData();
-        formData.append('image', base64Image);
-        formData.append('name', title);
-
-        axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, formData)
-          .then(response => {
-            const imageURL = response.data.data.url;
-            console.log("✅ Uploaded to ImageBB:", imageURL);
-            saveToFirebase(title, date, imageURL);
-          })
-          .catch(err => {
-            console.error("❌ ImgBB upload error:", err);
-            alert("Image upload failed. Check console.");
-          });
-      };
-
-      reader.readAsDataURL(file);
-    });
-
-    function saveToFirebase(title, date, imageURL) {
-      db.ref('artworks').push({
-        title,
-        date,
-        imageURL
-      })
-      .then(() => {
-        alert("✅ Artwork uploaded successfully!");
-        resetForm();
-        loadGallery();
-      })
-      .catch(err => {
-        console.error("❌ Firebase error:", err);
-        alert("Failed to save to Firebase. Check rules and internet.");
-      });
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
     }
 
-    function resetForm() {
-      imageInput.value = '';
-      titleInput.value = '';
-      dateInput.value = '';
+    auth.signInWithEmailAndPassword(email, password)
+      .then(() => alert("✅ Logged in!"))
+      .catch(err => alert("❌ Login failed: " + err.message));
+  });
+
+  signupBtn.addEventListener('click', () => {
+    const email = document.getElementById('emailInput').value;
+    const password = document.getElementById('passwordInput').value;
+
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
     }
 
-    function loadGallery() {
-      gallery.innerHTML = '';
-      db.ref('artworks').once('value')
-        .then(snapshot => {
-          const data = snapshot.val();
-          if (!data) return;
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(() => alert("✅ Signed up!"))
+      .catch(err => alert("❌ Signup failed: " + err.message));
+  });
 
-          Object.values(data).forEach(art => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-              <img src="${art.imageURL}" alt="${art.title}">
-              <div class="card-info">
-                <h3>${art.title}</h3>
-                <p>${art.date}</p>
-              </div>
-            `;
-            gallery.appendChild(card);
-          });
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      userEmail.textContent = `Logged in as: ${user.email}`;
+      userInfo.style.display = 'inline-block';
+      loginForm.style.display = 'none';
+      uploadBtn.disabled = false;
+      loadGallery(); // Reload gallery when logged in
+    } else {
+      currentUser = null;
+      userInfo.style.display = 'none';
+      loginForm.style.display = 'block';
+      uploadBtn.disabled = true;
+      gallery.innerHTML = ''; // Clear gallery when logged out
+    }
+  });
+
+  uploadBtn.addEventListener('click', () => {
+    const file = imageInput.files[0];
+    const title = titleInput.value.trim();
+    const date = dateInput.value;
+
+    if (!file || !title || !date) {
+      alert("Please fill all fields and select an image!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Image = reader.result.split(',')[1];
+
+      const formData = new FormData();
+      formData.append('image', base64Image);
+      formData.append('name', title);
+
+      axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, formData)
+        .then(response => {
+          const imageURL = response.data.data.url;
+          console.log("✅ Uploaded to ImageBB:", imageURL);
+          saveToFirebase(title, date, imageURL);
         })
         .catch(err => {
-          console.error("❌ Error loading gallery:", err);
+          console.error("❌ ImgBB upload error:", err);
+          alert("Image upload failed. Check console.");
         });
-    }
+    };
 
-    loadGallery();
-  </script>
+    reader.readAsDataURL(file);
+  });
+
+  function saveToFirebase(title, date, imageURL) {
+    if (!currentUser) return;
+
+    db.ref('artworks').push({
+      uid: currentUser.uid,
+      title,
+      date,
+      imageURL
+    })
+    .then(() => {
+      alert("✅ Artwork uploaded successfully!");
+      resetForm();
+      loadGallery();
+    })
+    .catch(err => {
+      console.error("❌ Firebase error:", err);
+      alert("Failed to save to Firebase. Check rules and internet.");
+    });
+  }
+
+  function resetForm() {
+    imageInput.value = '';
+    titleInput.value = '';
+    dateInput.value = '';
+  }
+
+  function loadGallery() {
+    if (!currentUser) return;
+
+    gallery.innerHTML = '';
+    db.ref('artworks').once('value')
+      .then(snapshot => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        // Filter for current user only
+        const userArtworks = Object.values(data)
+          .filter(art => art.uid === currentUser.uid)
+          .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest first
+
+        userArtworks.forEach(art => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <img src="${art.imageURL}" alt="${art.title}">
+            <div class="card-info">
+              <h3>${art.title}</h3>
+              <p>${art.date}</p>
+            </div>
+          `;
+          gallery.appendChild(card);
+        });
+      })
+      .catch(err => {
+        console.error("❌ Error loading gallery:", err);
+      });
+  }
+</script>
 </body>
 </html>
