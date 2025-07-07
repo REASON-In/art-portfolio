@@ -64,6 +64,23 @@
   </footer>
 
   <script>
+
+axios.post(`https://api.imgbb.com/1/upload?key=${IMAGEBB_API_KEY}`, {
+  image: base64Image,
+  name: title,
+  expiration: 0
+})
+.then(response => {
+  console.log('ImageBB upload response:', response.data);
+  const imageURL = response.data.data.url;
+  saveToFirebase(title, date, imageURL);
+})
+.catch(err => {
+  console.error("ImageBB upload error:", err.response ? err.response.data : err);
+  alert("Upload failed, try again!");
+});
+
+    
     // Your ImageBB API Key here
     const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
 
