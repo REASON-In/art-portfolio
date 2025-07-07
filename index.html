@@ -116,22 +116,21 @@
   </footer>
 
   <script>
-    // Your ImageBB API Key
     const IMAGEBB_API_KEY = 'b69b83bfe9d9cf4c9c7ba8baf6737e5a';
 
-    // Your Firebase config
- const firebaseConfig = {
-  apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
-  authDomain: "portfolio-94e00.firebaseapp.com",
-  databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
-  projectId: "portfolio-94e00",
-  storageBucket: "portfolio-94e00.firebasestorage.app",
-  messagingSenderId: "1019596037495",
-  appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
-  measurementId: "G-B5HLG7MQ96"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzMrxUynnYXGI5CpzjLK-tq5H3qorjsWQ",
+      authDomain: "portfolio-94e00.firebaseapp.com",
+      databaseURL: "https://portfolio-94e00-default-rtdb.firebaseio.com",
+      projectId: "portfolio-94e00",
+      storageBucket: "portfolio-94e00.appspot.com", // ✅ Fixed
+      messagingSenderId: "1019596037495",
+      appId: "1:1019596037495:web:c06f468fc3e863a62f5572",
+      measurementId: "G-B5HLG7MQ96"
+    };
 
     firebase.initializeApp(firebaseConfig);
+    firebase.database.enableLogging(true); // ✅ Added for debug info
     const db = firebase.database();
 
     const uploadBtn = document.getElementById('uploadBtn');
@@ -197,28 +196,31 @@
 
     function loadGallery() {
       gallery.innerHTML = '';
-      db.ref('artworks').once('value', snapshot => {
-        const data = snapshot.val();
-        if (!data) return;
+      db.ref('artworks').once('value')
+        .then(snapshot => {
+          const data = snapshot.val();
+          if (!data) return;
 
-        Object.values(data).forEach(art => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <img src="${art.imageURL}" alt="${art.title}">
-            <div class="card-info">
-              <h3>${art.title}</h3>
-              <p>${art.date}</p>
-            </div>
-          `;
-          gallery.appendChild(card);
+          Object.values(data).forEach(art => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+              <img src="${art.imageURL}" alt="${art.title}">
+              <div class="card-info">
+                <h3>${art.title}</h3>
+                <p>${art.date}</p>
+              </div>
+            `;
+            gallery.appendChild(card);
+          });
+        })
+        .catch(err => {
+          console.error("❌ Error loading gallery:", err); // ✅ Added error handling
         });
-      });
     }
 
-    // Load existing artwork
     loadGallery();
   </script>
-
 </body>
 </html>
+
