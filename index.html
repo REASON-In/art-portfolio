@@ -7,7 +7,8 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
- <link rel="icon" href="https://i.ibb.co/qLMGrjBH/An-artistic-easel-with-a-canvas-displaying-a-colorful-abstract-art-painting-with-a-palette-o.webp" type="image/png">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <link rel="icon" href="https://i.ibb.co/qLMGrjBH/An-artistic-easel-with-a-canvas-displaying-a-colorful-abstract-art-painting-with-a-palette-o.webp" type="image/png">
 
   <style>
     body {
@@ -29,12 +30,48 @@
       margin-bottom: 0.5rem;
     }
 
+    /* New Auth Section */
+    #authSection {
+      max-width: 600px;
+      margin: 1rem auto;
+      padding: 1rem;
+      background: #f9f9f9;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    #authSection input {
+      padding: 0.6rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin: 0.3rem;
+      width: 200px;
+    }
+
+    #authSection button {
+      padding: 0.6rem 1rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+      background: #f0a6ca;
+      color: white;
+      cursor: pointer;
+      margin: 0.3rem;
+    }
+
+    #authSection button:hover {
+      background: #e082b2;
+    }
+
+    /* Upload Form */
     #uploadForm {
       display: flex;
       flex-direction: column;
       gap: 1rem;
       max-width: 600px;
-      margin: 2rem auto;
+      margin: 1rem auto 2rem;
     }
 
     #uploadForm input,
@@ -52,8 +89,13 @@
       cursor: pointer;
     }
 
-    #uploadForm button:hover {
+    #uploadForm button:hover:not(:disabled) {
       background: #e082b2;
+    }
+
+    #uploadForm button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
 
     .gallery {
@@ -63,47 +105,46 @@
       padding: 2rem;
     }
 
-.card {
-  background: #fff;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
 
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.1);
-}
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+    }
 
-.card img {
-  width: 100%;
-  display: block;
-  object-fit: cover;
-  height: 300px;
-}
+    .card img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+      height: 300px;
+    }
 
-.card-info {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
+    .card-info {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
 
-.card-info h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: bold;
-}
+    .card-info h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
 
-.card-info p {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #666;
-}
-
+    .card-info p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #666;
+    }
 
     footer {
       text-align: center;
@@ -120,11 +161,28 @@
     <p>This is my time, and I’m locking it down.</p>
   </header>
 
+  <!-- AUTH SECTION -->
+  <section id="authSection">
+    <div id="userInfo" style="display:none;">
+      <span id="userEmail"></span>
+      <button id="logoutBtn">Logout</button>
+    </div>
+
+    <div id="loginForm">
+      <input type="email" id="emailInput" placeholder="Email" />
+      <input type="password" id="passwordInput" placeholder="Password" />
+      <br />
+      <button id="loginBtn">Login</button>
+      <button id="signupBtn">Sign Up</button>
+    </div>
+  </section>
+
+  <!-- UPLOAD FORM -->
   <section id="uploadForm">
     <input type="file" id="imageInput" accept="image/*" />
     <input type="text" id="titleInput" placeholder="Artwork Title" />
     <input type="date" id="dateInput" />
-    <button id="uploadBtn">Upload Artwork</button>
+    <button id="uploadBtn" disabled>Upload Artwork</button>
   </section>
 
   <main>
@@ -153,13 +211,71 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
 
+    // Auth UI Elements
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userInfo = document.getElementById('userInfo');
+    const loginForm = document.getElementById('loginForm');
+    const userEmail = document.getElementById('userEmail');
+
+    // Upload UI Elements
     const uploadBtn = document.getElementById('uploadBtn');
     const imageInput = document.getElementById('imageInput');
     const titleInput = document.getElementById('titleInput');
     const dateInput = document.getElementById('dateInput');
     const gallery = document.getElementById('gallery');
 
+    // AUTH EVENT LISTENERS
+    loginBtn.addEventListener('click', () => {
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => alert("✅ Logged in!"))
+        .catch(err => alert("❌ Login failed: " + err.message));
+    });
+
+    signupBtn.addEventListener('click', () => {
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => alert("✅ Signed up!"))
+        .catch(err => alert("❌ Signup failed: " + err.message));
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      auth.signOut();
+    });
+
+    // Listen for Auth State Changes
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        userEmail.textContent = `Logged in as: ${user.email}`;
+        userInfo.style.display = 'inline-block';
+        loginForm.style.display = 'none';
+        uploadBtn.disabled = false;
+      } else {
+        userInfo.style.display = 'none';
+        loginForm.style.display = 'block';
+        uploadBtn.disabled = true;
+      }
+    });
+
+    // UPLOAD HANDLER
     uploadBtn.addEventListener('click', () => {
       const file = imageInput.files[0];
       const title = titleInput.value.trim();
@@ -245,4 +361,3 @@
   </script>
 </body>
 </html>
-
