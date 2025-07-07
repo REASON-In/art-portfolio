@@ -7,7 +7,6 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <link rel="icon" href="https://i.ibb.co/qLMGrjBH/An-artistic-easel-with-a-canvas-displaying-a-colorful-abstract-art-painting-with-a-palette-o.webp" type="image/png">
 
   <style>
@@ -28,41 +27,6 @@
 
     h1 {
       margin-bottom: 0.5rem;
-    }
-
-    /* New Auth Section */
-    #authSection {
-      max-width: 600px;
-      margin: 1rem auto;
-      padding: 1rem;
-      background: #f9f9f9;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    #authSection input {
-      padding: 0.6rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin: 0.3rem;
-      width: 200px;
-    }
-
-    #authSection button {
-      padding: 0.6rem 1rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      background: #f0a6ca;
-      color: white;
-      cursor: pointer;
-      margin: 0.3rem;
-    }
-
-    #authSection button:hover {
-      background: #e082b2;
     }
 
     /* Upload Form */
@@ -161,28 +125,12 @@
     <p>This is my time, and I’m locking it down.</p>
   </header>
 
-  <!-- AUTH SECTION -->
-  <section id="authSection">
-    <div id="userInfo" style="display:none;">
-      <span id="userEmail"></span>
-      <button id="logoutBtn">Logout</button>
-    </div>
-
-    <div id="loginForm">
-      <input type="email" id="emailInput" placeholder="Email" />
-      <input type="password" id="passwordInput" placeholder="Password" />
-      <br />
-      <button id="loginBtn">Login</button>
-      <button id="signupBtn">Sign Up</button>
-    </div>
-  </section>
-
   <!-- UPLOAD FORM -->
   <section id="uploadForm">
     <input type="file" id="imageInput" accept="image/*" />
     <input type="text" id="titleInput" placeholder="Artwork Title" />
     <input type="date" id="dateInput" />
-    <button id="uploadBtn" disabled>Upload Artwork</button>
+    <button id="uploadBtn">Upload Artwork</button>
   </section>
 
   <main>
@@ -211,71 +159,12 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  const auth = firebase.auth();
-
-  const loginBtn = document.getElementById('loginBtn');
-  const signupBtn = document.getElementById('signupBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const userInfo = document.getElementById('userInfo');
-  const loginForm = document.getElementById('loginForm');
-  const userEmail = document.getElementById('userEmail');
 
   const uploadBtn = document.getElementById('uploadBtn');
   const imageInput = document.getElementById('imageInput');
   const titleInput = document.getElementById('titleInput');
   const dateInput = document.getElementById('dateInput');
   const gallery = document.getElementById('gallery');
-
-  let currentUser = null;
-
-  loginBtn.addEventListener('click', () => {
-    const email = document.getElementById('emailInput').value;
-    const password = document.getElementById('passwordInput').value;
-
-    if (!email || !password) {
-      alert("Please enter both email and password.");
-      return;
-    }
-
-    auth.signInWithEmailAndPassword(email, password)
-      .then(() => alert("✅ Logged in!"))
-      .catch(err => alert("❌ Login failed: " + err.message));
-  });
-
-  signupBtn.addEventListener('click', () => {
-    const email = document.getElementById('emailInput').value;
-    const password = document.getElementById('passwordInput').value;
-
-    if (!email || !password) {
-      alert("Please enter both email and password.");
-      return;
-    }
-
-    auth.createUserWithEmailAndPassword(email, password)
-      .then(() => alert("✅ Signed up!"))
-      .catch(err => alert("❌ Signup failed: " + err.message));
-  });
-
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut();
-  });
-
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      currentUser = user;
-      userEmail.textContent = `Logged in as: ${user.email}`;
-      userInfo.style.display = 'inline-block';
-      loginForm.style.display = 'none';
-      uploadBtn.disabled = false;
-      loadGallery(); // Reload gallery when logged in
-    } else {
-      currentUser = null;
-      userInfo.style.display = 'none';
-      loginForm.style.display = 'block';
-      uploadBtn.disabled = true;
-      gallery.innerHTML = ''; // Clear gallery when logged out
-    }
-  });
 
   uploadBtn.addEventListener('click', () => {
     const file = imageInput.files[0];
@@ -311,10 +200,7 @@
   });
 
   function saveToFirebase(title, date, imageURL) {
-    if (!currentUser) return;
-
     db.ref('artworks').push({
-      uid: currentUser.uid,
       title,
       date,
       imageURL
@@ -337,20 +223,16 @@
   }
 
   function loadGallery() {
-    if (!currentUser) return;
-
     gallery.innerHTML = '';
     db.ref('artworks').once('value')
       .then(snapshot => {
         const data = snapshot.val();
         if (!data) return;
 
-        // Filter for current user only
-        const userArtworks = Object.values(data)
-          .filter(art => art.uid === currentUser.uid)
-          .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest first
+        const artworks = Object.values(data)
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        userArtworks.forEach(art => {
+        artworks.forEach(art => {
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
@@ -367,6 +249,8 @@
         console.error("❌ Error loading gallery:", err);
       });
   }
+
+  loadGallery();
 </script>
 </body>
 </html>
